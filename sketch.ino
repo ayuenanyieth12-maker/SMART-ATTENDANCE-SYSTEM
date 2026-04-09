@@ -9,4 +9,14 @@
 
 MFRC522 rfid(SS_PIN, RST_PIN);
 
+void setup() {
+  Serial.begin(115200);
+  SPI.begin(18, 19, 23, 5); // SCK, MISO, MOSI, SS
+  rfid.PCD_Init();
+
+  Serial.println("=== RFID Attendance Ready ===");
+  Serial.println("Tap a card...");
+}
+
+
 
