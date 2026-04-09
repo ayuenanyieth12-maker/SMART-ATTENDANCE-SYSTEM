@@ -18,5 +18,20 @@ void setup() {
   Serial.println("Tap a card...");
 }
 
+void loop() {
+  if (!rfid.PICC_IsNewCardPresent()) return;
+  if (!rfid.PICC_ReadCardSerial()) return;
+
+  String uid = "";
+  for (byte i = 0; i < rfid.uid.size; i++) {
+    if (rfid.uid.uidByte[i] < 0x10) uid += "0";
+    uid += String(rfid.uid.uidByte[i], HEX);
+    if (i < rfid.uid.size - 1) uid += ":";
+  }
+  uid.toUpperCase();
+
+  Serial.println("-----------------------------");
+  Serial.print("UID: ");
+  Serial.println(uid);
 
 
