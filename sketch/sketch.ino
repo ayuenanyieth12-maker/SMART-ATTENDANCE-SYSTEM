@@ -46,3 +46,10 @@ if (uid == "AA:BB:CC:DD") {
   }
 
   Serial.println("-----------------------------");
+
+    rfid.PICC_HaltA();
+  rfid.PCD_StopCrypto1();
+  delay(1500);
+}
+
+
