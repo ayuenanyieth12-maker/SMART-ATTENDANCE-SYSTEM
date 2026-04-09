@@ -34,4 +34,15 @@ void loop() {
   Serial.print("UID: ");
   Serial.println(uid);
 
+if (uid == "AA:BB:CC:DD") {
+    Serial.println("Student : Alice Nakamura");
+    Serial.println("Status  : PRESENT");
+  } else if (uid == "AB:CD:12:34") {
+    Serial.println("Student : Brian Omondi");
+    Serial.println("Status  : PRESENT");
+  } else {
+    Serial.println("Student : Unknown card");
+    Serial.println("Status  : DENIED");
+  }
 
+  Serial.println("-----------------------------");
