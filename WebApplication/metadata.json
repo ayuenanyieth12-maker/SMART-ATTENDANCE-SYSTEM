@@ -1,0 +1,5 @@
+{
+  "name": "Smart Attendance Dashboard",
+  "description": "A professional real-time student attendance management system integrated with ESP32 RFID hardware and Firebase.",
+  "requestFramePermissions": []
+}
