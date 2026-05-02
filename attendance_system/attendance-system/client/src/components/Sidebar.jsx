@@ -8,7 +8,6 @@ const links = [
   { id: 'class',      label: 'Classes',        icon: BookOpen         },
   { id: 'scans',      label: 'Scan Log',       icon: List             },
   { id: 'kiosk',      label: 'Kiosk Mode',     icon: Monitor          },
-  { id: 'portal',     label: 'Student Portal', icon: UserCircle       },
 ]
 
 export default function Sidebar({ page, setPage }) {

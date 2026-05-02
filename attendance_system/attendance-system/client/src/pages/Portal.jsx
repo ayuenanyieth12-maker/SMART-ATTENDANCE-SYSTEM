@@ -3,7 +3,7 @@ import { useList } from '../hooks/useRealtime'
 import { LogOut, User, Hash, BookOpen, Calendar, Shield, Menu, X } from 'lucide-react'
 
 export default function Portal() {
-  const [studentId, setStudentId] = useState('')
+  const [loginIdentifier, setLoginIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [student, setStudent] = useState(null)
@@ -14,7 +14,10 @@ export default function Portal() {
 
   const handleLogin = async () => {
     setError('')
-    const found = students.find(s => s.student_id === studentId && s.password === password)
+    const found = students.find(s => 
+      (s.student_id === loginIdentifier || s.name === loginIdentifier || s.email === loginIdentifier) 
+      && s.password === password
+    )
     
     if (found) {
       // Derive profile data
@@ -87,13 +90,13 @@ export default function Portal() {
 
             <div className="space-y-5">
               <div>
-                <label className="text-gray-400 text-sm mb-2 block">Student ID</label>
+                <label className="text-gray-400 text-sm mb-2 block">ID, Name, or Email</label>
                 <input
                   type="text"
-                  value={studentId}
-                  onChange={e => setStudentId(e.target.value)}
+                  value={loginIdentifier}
+                  onChange={e => setLoginIdentifier(e.target.value)}
                   className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-                  placeholder="e.g. STU2024001"
+                  placeholder="Enter your ID, Name, or Email"
                 />
               </div>
               <div>
