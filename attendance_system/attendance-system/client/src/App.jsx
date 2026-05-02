@@ -10,6 +10,7 @@ import Timetable from './pages/Timetable'
 import Kiosk from './pages/Kiosk'
 import Portal from './pages/Portal'
 import Registration from './pages/Registration'
+import Reports from './pages/Reports'
 
 export default function App() {
   const [page,            setPage]            = useState('overview')
@@ -32,6 +33,7 @@ export default function App() {
       case 'kiosk':      return <Kiosk />
       case 'portal':     return <Portal />
       case 'registration': return <Registration />
+      case 'reports':    return <Reports />
       default:           return <Overview />
     }
   }

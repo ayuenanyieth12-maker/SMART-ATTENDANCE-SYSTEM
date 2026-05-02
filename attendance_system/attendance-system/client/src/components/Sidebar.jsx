@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LayoutDashboard, Users, BookOpen, List, CalendarDays, Monitor, UserCircle, Menu, X, PlusCircle } from 'lucide-react'
+import { LayoutDashboard, Users, BookOpen, List, CalendarDays, Monitor, UserCircle, Menu, X, PlusCircle, FileText } from 'lucide-react'
 
 const links = [
   { id: 'overview',   label: 'Overview',       icon: LayoutDashboard },
@@ -7,6 +7,7 @@ const links = [
   { id: 'students',   label: 'Students',       icon: Users            },
   { id: 'class',      label: 'Classes',        icon: BookOpen         },
   { id: 'scans',      label: 'Scan Log',       icon: List             },
+  { id: 'reports',    label: 'Reports & Exports', icon: FileText      },
   { id: 'registration', label: 'Card Registration', icon: PlusCircle   },
   { id: 'kiosk',      label: 'Kiosk Mode',     icon: Monitor          },
 ]
