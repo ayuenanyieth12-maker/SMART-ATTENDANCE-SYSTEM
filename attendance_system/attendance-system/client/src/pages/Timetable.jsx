@@ -1,11 +1,8 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { useState, useEffect } from 'react'
+import { useList } from '../hooks/useRealtime'
 import { Clock, Wifi } from 'lucide-react'
 
-const API = 'http://localhost:3001'
-
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const CLASS_COLORS = {
   BSE314:  { bg: 'bg-blue-900/40',   border: 'border-blue-700',   text: 'text-blue-300',   dot: 'bg-blue-400'   },
@@ -15,27 +12,34 @@ const CLASS_COLORS = {
 }
 
 export default function Timetable() {
-  const [timetable,   setTimetable]   = useState([])
-  const [activeClass, setActiveClass] = useState(null)
-  const [now,         setNow]         = useState(new Date())
+  const { data: timetable } = useList('timetable')
+  const { data: classes } = useList('classes')
+  const [now, setNow] = useState(new Date())
 
   useEffect(() => {
-    axios.get(`${API}/timetable`).then(r => setTimetable(r.data))
-    axios.get(`${API}/active-class`).then(r => setActiveClass(r.data?.none ? null : r.data))
-
-    // Refresh clock every minute
-    const tick = setInterval(() => {
-      setNow(new Date())
-      axios.get(`${API}/active-class`).then(r => setActiveClass(r.data?.none ? null : r.data))
-    }, 60_000)
+    const tick = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(tick)
   }, [])
 
   const today = now.getDay()
+  const timeNow = now.getHours().toString().padStart(2, '0') + ':' +
+                  now.getMinutes().toString().padStart(2, '0')
+
+  // Enrich timetable with class names
+  const timetableEnriched = timetable.map(slot => ({
+    ...slot,
+    class_name: classes.find(c => c.class_id === slot.class_id)?.class_name || slot.class_id
+  }))
+
+  const activeClass = timetableEnriched.find(row =>
+    row.day_of_week === today &&
+    row.start_time <= timeNow &&
+    row.end_time > timeNow
+  )
 
   // Group timetable rows by day
   const byDay = DAYS.map((_, i) =>
-    timetable.filter(row => row.day_of_week === i)
+    timetableEnriched.filter(row => row.day_of_week === i)
               .sort((a, b) => a.start_time.localeCompare(b.start_time))
   )
 
@@ -46,9 +50,6 @@ export default function Timetable() {
     return `${h12}:${m.toString().padStart(2, '0')} ${suffix}`
   }
 
-  const timeNow = now.getHours().toString().padStart(2, '0') + ':' +
-                  now.getMinutes().toString().padStart(2, '0')
-
   const isActive = (row) =>
     row.day_of_week === today &&
     row.start_time <= timeNow &&
@@ -58,7 +59,7 @@ export default function Timetable() {
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Weekly Timetable</h2>
           <p className="text-gray-400 text-sm mt-1">
@@ -67,7 +68,7 @@ export default function Timetable() {
         </div>
 
         {/* Active class banner */}
-        <div className={`flex items-center gap-3 px-5 py-3 rounded-xl border ${
+        <div className={`flex items-center gap-3 px-5 py-3 rounded-xl border w-full sm:w-auto ${
           activeClass
             ? 'bg-green-900/30 border-green-700'
             : 'bg-gray-900 border-gray-700'
@@ -87,7 +88,7 @@ export default function Timetable() {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2 sm:gap-3">
         {Object.entries(CLASS_COLORS).map(([id, c]) => {
           const cls = timetable.find(r => r.class_id === id)
           if (!cls) return null
@@ -95,14 +96,14 @@ export default function Timetable() {
             <div key={id} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${c.bg} ${c.border}`}>
               <span className={`w-2 h-2 rounded-full ${c.dot}`} />
               <span className={`text-xs font-medium ${c.text}`}>{cls.class_name}</span>
-              <span className="text-xs text-gray-500">{id}</span>
+              <span className="text-xs text-gray-500 hidden sm:inline">{id}</span>
             </div>
           )
         })}
       </div>
 
       {/* Grid — show Mon→Fri only */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {[1, 2, 3, 4, 5].map(dayIdx => (
           <div key={dayIdx}
             className={`rounded-xl border p-3 space-y-2 ${

@@ -1,22 +1,35 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { useList, useObject } from '../hooks/useRealtime'
 import { RadialBarChart, RadialBar, ResponsiveContainer } from 'recharts'
 
-const API = 'http://localhost:3001'
-
 export default function ClassView({ classId }) {
-  const [attendance, setAttendance] = useState([])
-  const [live, setLive] = useState([])
+  const { data: cls } = useObject(`classes/${classId}`)
+  const { data: allScans } = useList('scans')
+  const { data: students } = useList('students')
 
-  useEffect(() => {
-    if (!classId) return
-    axios.get(`${API}/attendance?class_id=${classId}`).then(r => setAttendance(r.data))
-    axios.get(`${API}/live?class_id=${classId}`).then(r => setLive(r.data))
-  }, [classId])
+  const scans = allScans.filter(s => s.class_id === classId)
+
+  // Derive attendance for each student in this class
+  // For now, let's just show all students. In a real app, we'd check enrollments.
+  const attendance = students.map(s => {
+    const studentScans = scans.filter(sc => sc.uid === s.uid)
+    const times_present = studentScans.filter(sc => sc.type === 'IN').length
+    const total_sessions = new Set(scans.map(sc => sc.timestamp.split(' ')[0])).size
+    const percentage = total_sessions > 0 ? Math.round((times_present / total_sessions) * 100) : 0
+    return { ...s, times_present, total_sessions, percentage }
+  })
+
+  const live = Object.values(
+    scans.reduce((acc, scan) => {
+      if (!acc[scan.uid] || new Date(scan.timestamp) > new Date(acc[scan.uid].timestamp)) {
+        acc[scan.uid] = scan
+      }
+      return acc
+    }, {})
+  ).filter(s => s.type === 'IN')
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Class: {classId}</h2>
+      <h2 className="text-2xl font-bold">Class: {cls?.class_name || classId}</h2>
       <p className="text-gray-400">{live.length} student(s) currently in this class</p>
 
       <div className="grid grid-cols-2 gap-4">

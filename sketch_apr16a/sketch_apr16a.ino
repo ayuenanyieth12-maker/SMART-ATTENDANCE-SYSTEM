@@ -3,88 +3,67 @@
 #include <MFRC522DriverSPI.h>
 #include <MFRC522DriverPinSimple.h>
 #include <WiFi.h>
-#include <time.h>
+#include <Firebase_ESP_Client.h>
+
+// Provide the token generation process info.
+#include <addons/TokenHelper.h>
+// Provide the RTDB payload printing info and other helper functions.
+#include <addons/RTDBHelper.h>
+
+#include "secrets.h"
 
 #define SS_PIN   5
 #define RST_PIN  22
-
-// ===== WIFI Settings =====
-const char* ssid = "YourWifiName";
-const char* password = "YourWifiPassword";
-
-// ===== NTP Server =====
-const char* ntpServer = "pool.ntp.org";
 
 // ===== RFID Setup =====
 MFRC522DriverPinSimple ss_pin(SS_PIN);
 MFRC522DriverSPI driver(ss_pin);
 MFRC522 rfid(driver);
 
-// ===== Student Structure =====
-struct Student {
-  String uid;
-  String name;
-  bool isPresent;
-  String entryTime;
-  String exitTime;
-};
+// ===== Firebase Setup =====
+FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
 
-Student students[] = {
-  {"77:E3:35:25", "EPAJU PIUS JUNIOR", false, "", ""},
-  {"35:7E:DD:E0", "AYUEN AGUEK", false, "", ""}
-};
-
-const int numStudents = sizeof(students) / sizeof(students[0]);
-
-// ===== Anti double-scan =====
-String lastUID = "";
 unsigned long lastScanTime = 0;
 const int cooldown = 3000;
+String lastUID = "";
 
-// ===== Get Current Time =====
-String getCurrentTime() {
-  struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)) {
-    return "Time unavailable";
-  }
-
-  char buffer[30];
-  strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
-  return String(buffer);
-}
+// Database URL from secrets
+String databaseURL = "https://" + String(FIREBASE_PROJECT_ID) + "-default-rtdb.firebaseio.com";
 
 void setup() {
   Serial.begin(115200);
   SPI.begin(18, 19, 23, SS_PIN);
 
   // ===== Connect WiFi =====
-  Serial.print("Connecting to WiFi...");
-  WiFi.begin(ssid, password);
-
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-
   Serial.println("\nWiFi connected!");
 
-  // ===== Set Uganda Time (EAT) =====
-  configTzTime("Africa/Kampala", ntpServer);
+  // ===== Firebase Config =====
+  config.api_key = FIREBASE_API_KEY;
+  config.database_url = databaseURL;
+  
+  auth.user.email = USER_EMAIL;
+  auth.user.password = USER_PASSWORD;
 
-  Serial.println("Time synced (Uganda time)");
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
 
   rfid.PCD_Init();
-  delay(4);
-
-  Serial.println("=== RFID Attendance System Ready ===");
-  Serial.println("Tap card to mark IN / OUT");
+  Serial.println("=== RFID Attendance System Ready (RTDB Mode) ===");
 }
 
 void loop() {
   if (!rfid.PICC_IsNewCardPresent()) return;
   if (!rfid.PICC_ReadCardSerial()) return;
 
-  // ===== Build UID =====
+  // Build UID
   String uid = "";
   for (byte i = 0; i < rfid.uid.size; i++) {
     if (rfid.uid.uidByte[i] < 0x10) uid += "0";
@@ -93,61 +72,29 @@ void loop() {
   }
   uid.toUpperCase();
 
-  // ===== Prevent double scan =====
-  if (uid == lastUID && millis() - lastScanTime < cooldown) {
-    return;
-  }
+  if (uid == lastUID && millis() - lastScanTime < cooldown) return;
   lastUID = uid;
   lastScanTime = millis();
 
-  Serial.println("-----------------------------");
-  Serial.print("UID: ");
+  Serial.print("Scanned UID: ");
   Serial.println(uid);
 
-  bool found = false;
-  String currentTime = getCurrentTime();
+  if (Firebase.ready()) {
+    // Record the scan in RTDB
+    FirebaseJson json;
+    json.add("uid", uid);
+    json.add("timestamp", "2024-05-02 14:00:00"); // Placeholder for time
+    json.add("type", "IN");
+    json.add("class_id", "BSE314");
 
-  for (int i = 0; i < numStudents; i++) {
-    if (students[i].uid == uid) {
-      found = true;
-
-      if (!students[i].isPresent) {
-        // ===== ENTRY =====
-        students[i].isPresent = true;
-        students[i].entryTime = currentTime;
-        students[i].exitTime = "";
-
-        Serial.print("Student : ");
-        Serial.println(students[i].name);
-        Serial.print("Status  : PRESENT (IN at ");
-        Serial.print(currentTime);
-        Serial.println(")");
-      } 
-      else {
-        // ===== EXIT =====
-        students[i].isPresent = false;
-        students[i].exitTime = currentTime;
-
-        Serial.print("Student : ");
-        Serial.println(students[i].name);
-        Serial.print("Status  : LEFT (OUT at ");
-        Serial.print(currentTime);
-        Serial.println(")");
-        Serial.print("Duration: ");
-        Serial.print(students[i].entryTime);
-        Serial.print(" → ");
-        Serial.println(currentTime);
-      }
-      break;
+    String path = "/scans/" + String(millis()); // Simple unique ID
+    
+    if (Firebase.RTDB.setJSON(&fbdo, path.c_str(), &json)) {
+      Serial.println("Scan recorded in RTDB!");
+    } else {
+      Serial.println("Error recording scan: " + fbdo.errorReason());
     }
   }
-
-  if (!found) {
-    Serial.println("Student : Unknown card");
-    Serial.println("Status  : DENIED");
-  }
-
-  Serial.println("-----------------------------");
 
   rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();

@@ -1,25 +1,43 @@
 import { useState } from 'react'
-import axios from 'axios'
-import { LogOut, User, Hash, BookOpen, Calendar, Shield } from 'lucide-react'
-
-const API = 'http://localhost:3001'
+import { useList } from '../hooks/useRealtime'
+import { LogOut, User, Hash, BookOpen, Calendar, Shield, Menu, X } from 'lucide-react'
 
 export default function Portal() {
   const [studentId, setStudentId] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [student, setStudent] = useState(null)
+  
+  const { data: students } = useList('students')
+  const { data: allScans } = useList('scans')
+  const { data: classes } = useList('classes')
 
   const handleLogin = async () => {
     setError('')
-    try {
-      const res = await axios.post(`${API}/student-login`, {
-        student_id: studentId,
-        password
+    const found = students.find(s => s.student_id === studentId && s.password === password)
+    
+    if (found) {
+      // Derive profile data
+      const scans = allScans.filter(s => s.uid === found.uid)
+      const attendance = classes.map(cls => {
+        const classScans = scans.filter(s => s.class_id === cls.class_id)
+        const times_present = classScans.filter(s => s.type === 'IN').length
+        const total_sessions = 10 
+        const percentage = Math.min(Math.round((times_present / total_sessions) * 100), 100)
+        return { ...cls, times_present, total_sessions, percentage }
       })
-      const profile = await axios.get(`${API}/students/${encodeURIComponent(res.data.uid)}`)
-      setStudent(profile.data)
-    } catch {
+      
+      const overallPercentage = attendance.length > 0
+        ? Math.round(attendance.reduce((s, a) => s + a.percentage, 0) / attendance.length)
+        : 0
+        
+      setStudent({
+        ...found,
+        overallPercentage,
+        attendance,
+        recentScans: scans.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 10)
+      })
+    } else {
       setError('Invalid Student ID or password')
     }
   }
@@ -109,13 +127,30 @@ export default function Portal() {
     )
   }
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const statusGood = student.overallPercentage >= 75
 
   return (
-    <div className="min-h-screen w-full bg-gray-950 text-white flex">
+    <div className="min-h-screen w-full bg-gray-950 text-white flex flex-col lg:flex-row">
+
+      {/* Mobile Header */}
+      <div className="lg:hidden flex items-center justify-between p-4 bg-gray-900 border-b border-gray-800 sticky top-0 z-30">
+        <div className="flex items-center gap-2">
+          <Shield size={20} className="text-blue-400" />
+          <span className="text-blue-400 font-bold">Portal</span>
+        </div>
+        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 bg-gray-800 rounded-lg">
+          <Menu size={20} />
+        </button>
+      </div>
 
       {/* Left Sidebar */}
-      <div className="w-72 min-h-screen bg-gray-900 border-r border-gray-800 flex flex-col p-6 gap-6 fixed left-0 top-0">
+      <div className={`
+        fixed lg:sticky top-0 left-0 z-40 w-72 h-screen bg-gray-900 border-r border-gray-800 flex flex-col p-6 gap-6 transition-transform duration-300
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        {/* Overlay for mobile */}
+        {isSidebarOpen && <div className="lg:hidden fixed inset-0 bg-black/60 -z-10" onClick={() => setIsSidebarOpen(false)} />}
 
         {/* Branding */}
         <div className="flex items-center gap-2 mb-2">
@@ -167,7 +202,7 @@ export default function Portal() {
       </div>
 
       {/* Main Content */}
-      <div className="ml-72 flex-1 p-8 space-y-6">
+      <div className="flex-1 p-4 sm:p-8 space-y-6">
 
         <div>
           <h2 className="text-2xl font-bold">My Attendance</h2>
@@ -222,7 +257,7 @@ export default function Portal() {
               No attendance records yet. Scan your card to get started.
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {student.attendance.map((cls, i) => {
                 const good = cls.percentage >= 75
                 return (

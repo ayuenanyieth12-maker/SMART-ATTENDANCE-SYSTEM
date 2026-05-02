@@ -7,6 +7,8 @@ import Students from './pages/Students'
 import ScansLog from './pages/ScansLog'
 import StudentProfile from './pages/StudentProfile'
 import Timetable from './pages/Timetable'
+import Kiosk from './pages/Kiosk'
+import Portal from './pages/Portal'
 
 export default function App() {
   const [page,            setPage]            = useState('overview')
@@ -26,6 +28,8 @@ export default function App() {
       case 'students':   return <Students   setPage={setPage} setSelectedStudent={setSelectedStudent} />
       case 'profile':    return <StudentProfile uid={selectedStudent} onBack={() => setPage('students')} />
       case 'scans':      return <ScansLog />
+      case 'kiosk':      return <Kiosk />
+      case 'portal':     return <Portal />
       default:           return <Overview />
     }
   }

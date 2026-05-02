@@ -1,29 +1,23 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
-
-const API = 'http://localhost:3001'
+import { useList } from '../hooks/useRealtime'
 
 export default function Students({ setPage, setSelectedStudent }) {
-  const [students, setStudents] = useState([])
-  const [attendance, setAttendance] = useState([])
-
-  useEffect(() => {
-    axios.get(`${API}/students`).then(r => setStudents(r.data))
-    axios.get(`${API}/attendance`).then(r => setAttendance(r.data))
-  }, [])
+  const { data: students } = useList('students')
+  const { data: scans } = useList('scans')
 
   const getAvgForStudent = (uid) => {
-    const records = attendance.filter(a => a.uid === uid)
-    if (records.length === 0) return 0
-    const avg = records.reduce((sum, r) => sum + r.percentage, 0) / records.length
-    return Math.round(avg)
+    const studentScans = scans.filter(s => s.uid === uid)
+    if (studentScans.length === 0) return 0
+    const sessions = new Set(studentScans.map(s => s.timestamp.split(' ')[0])).size
+    const target = 10 
+    return Math.min(Math.round((sessions / target) * 100), 100)
   }
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Students</h2>
       <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
           <thead className="bg-gray-800 text-gray-400">
             <tr>
               <th className="text-left px-4 py-3">Name</th>
@@ -68,7 +62,8 @@ export default function Students({ setPage, setSelectedStudent }) {
               )
             })}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   )

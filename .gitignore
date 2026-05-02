@@ -1,0 +1,16 @@
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+pubsub-debug.log
+ui-debug.log
+
+# Credentials
+.env
+.env.local
+secrets.h
+
+# Dependencies
+node_modules/
+dist/
+build/

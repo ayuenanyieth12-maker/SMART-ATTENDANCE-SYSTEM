@@ -1,29 +1,26 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
-
-const API = 'http://localhost:3001'
+import { useState, useEffect } from 'react'
+import { useList } from '../hooks/useRealtime'
 
 export default function Kiosk() {
+  const { data: scans } = useList('scans')
+  const { data: students } = useList('students')
   const [scan, setScan] = useState(null)
-  const [lastId, setLastId] = useState(null)
+  const [lastTimestamp, setLastTimestamp] = useState(null)
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await axios.get(`${API}/kiosk/latest`)
-        if (res.data && res.data.id !== lastId) {
-          setLastId(res.data.id)
-          setScan(res.data)
-          setVisible(true)
-          setTimeout(() => setVisible(false), 5000)
-        }
-      } catch (err) {
-        console.error(err)
+    if (scans.length > 0) {
+      const latest = scans[scans.length - 1]
+      if (latest.timestamp !== lastTimestamp) {
+        setLastTimestamp(latest.timestamp)
+        const student = students.find(s => s.uid === latest.uid)
+        setScan({ ...latest, ...student })
+        setVisible(true)
+        const timer = setTimeout(() => setVisible(false), 5000)
+        return () => clearTimeout(timer)
       }
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [lastId])
+    }
+  }, [scans, students, lastTimestamp])
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center">

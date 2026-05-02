@@ -1,25 +1,35 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { useObject, useList } from '../hooks/useRealtime'
 import { ArrowLeft, User, Hash, BookOpen, Calendar } from 'lucide-react'
 
-const API = 'http://localhost:3001'
-
 export default function StudentProfile({ uid, onBack }) {
-  const [student, setStudent] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { data: studentData, loading: studentLoading } = useObject(`students/${uid}`)
+  const { data: allScans } = useList('scans')
+  const { data: classes } = useList('classes')
 
-  useEffect(() => {
-    if (!uid) return
-    axios.get(`${API}/students/${encodeURIComponent(uid)}`)
-      .then(r => {
-        setStudent(r.data)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [uid])
+  const scans = allScans.filter(s => s.uid === uid)
 
-  if (loading) return <p className="text-gray-400">Loading...</p>
-  if (!student) return <p className="text-gray-400">Student not found.</p>
+  if (studentLoading) return <p className="text-gray-400">Loading...</p>
+  if (!studentData) return <p className="text-gray-400">Student not found.</p>
+
+  // Derive attendance summary
+  const attendanceSummary = classes.map(cls => {
+    const classScans = scans.filter(s => s.class_id === cls.class_id)
+    const times_present = classScans.filter(s => s.type === 'IN').length
+    const total_sessions = 10 // Placeholder for target sessions
+    const percentage = Math.min(Math.round((times_present / total_sessions) * 100), 100)
+    return { ...cls, times_present, total_sessions, percentage }
+  })
+
+  const overallPercentage = attendanceSummary.length > 0
+    ? Math.round(attendanceSummary.reduce((s, a) => s + a.percentage, 0) / attendanceSummary.length)
+    : 0
+
+  const student = {
+    ...studentData,
+    overallPercentage,
+    attendance: attendanceSummary,
+    recentScans: scans.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 10)
+  }
 
   return (
     <div className="space-y-6">

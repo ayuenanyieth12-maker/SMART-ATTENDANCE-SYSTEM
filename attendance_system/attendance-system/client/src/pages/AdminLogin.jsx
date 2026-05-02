@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
-
-const API = 'http://localhost:3001'
+import { auth } from '../firebase'
+import { signInWithEmailAndPassword } from 'firebase/auth'
 
 export default function AdminLogin() {
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const navigate = useNavigate()
@@ -13,13 +12,15 @@ export default function AdminLogin() {
   const handleLogin = async () => {
     setError('')
     try {
-      const res = await axios.post(`${API}/admin-login`, { username, password })
-      if (res.data.success) {
-        localStorage.setItem('adminToken', res.data.token)
-        navigate('/')
-      }
-    } catch {
-      setError('Invalid username or password')
+      // Firebase uses email/password. Defaulting to admin email from secrets if needed.
+      // Assuming user has created an admin account in Firebase.
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      const user = userCredential.user
+      localStorage.setItem('adminToken', user.accessToken)
+      navigate('/')
+    } catch (err) {
+      console.error(err)
+      setError('Invalid email or password')
     }
   }
 
@@ -41,13 +42,13 @@ export default function AdminLogin() {
 
         <div className="space-y-4">
           <div>
-            <label className="text-gray-400 text-xs mb-1 block">Username</label>
+            <label className="text-gray-400 text-xs mb-1 block">Email</label>
             <input
-              type="text"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
-              placeholder="admin"
+              placeholder="danmclaston@gmail.com"
             />
           </div>
           <div>

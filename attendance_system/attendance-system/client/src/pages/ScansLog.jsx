@@ -1,21 +1,12 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
-
-const API = 'http://localhost:3001'
+import { useState } from 'react'
+import { useList } from '../hooks/useRealtime'
 
 export default function ScansLog() {
-  const [scans, setScans] = useState([])
-  const [classes, setClasses] = useState([])
   const [filter, setFilter] = useState('')
-
-  useEffect(() => {
-    axios.get(`${API}/classes`).then(r => setClasses(r.data))
-  }, [])
-
-  useEffect(() => {
-    const url = filter ? `${API}/scans?class_id=${filter}` : `${API}/scans`
-    axios.get(url).then(r => setScans(r.data))
-  }, [filter])
+  const { data: classes } = useList('classes')
+  const { data: allScans } = useList('scans')
+  
+  const scans = filter ? allScans.filter(s => s.class_id === filter) : allScans
 
   return (
     <div className="space-y-6">
@@ -34,7 +25,8 @@ export default function ScansLog() {
       </div>
 
       <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[500px]">
           <thead className="bg-gray-800 text-gray-400">
             <tr>
               <th className="text-left px-4 py-3">Student</th>
@@ -59,7 +51,8 @@ export default function ScansLog() {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   )
