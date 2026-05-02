@@ -9,6 +9,7 @@ import StudentProfile from './pages/StudentProfile'
 import Timetable from './pages/Timetable'
 import Kiosk from './pages/Kiosk'
 import Portal from './pages/Portal'
+import Registration from './pages/Registration'
 
 export default function App() {
   const [page,            setPage]            = useState('overview')
@@ -30,6 +31,7 @@ export default function App() {
       case 'scans':      return <ScansLog />
       case 'kiosk':      return <Kiosk />
       case 'portal':     return <Portal />
+      case 'registration': return <Registration />
       default:           return <Overview />
     }
   }
