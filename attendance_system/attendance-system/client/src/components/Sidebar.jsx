@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LayoutDashboard, Users, BookOpen, List, CalendarDays, Monitor, UserCircle, Menu, X, PlusCircle, FileText } from 'lucide-react'
+import { LayoutDashboard, Users, BookOpen, List, CalendarDays, Monitor, UserCircle, Menu, X, PlusCircle, FileText, LogOut, ShieldAlert } from 'lucide-react'
 
 const links = [
   { id: 'overview',   label: 'Overview',       icon: LayoutDashboard },
@@ -9,6 +9,7 @@ const links = [
   { id: 'scans',      label: 'Scan Log',       icon: List             },
   { id: 'reports',    label: 'Reports & Exports', icon: FileText      },
   { id: 'registration', label: 'Card Registration', icon: PlusCircle   },
+  { id: 'admins',     label: 'Manage Admins',  icon: ShieldAlert      },
   { id: 'kiosk',      label: 'Kiosk Mode',     icon: Monitor          },
 ]
 
@@ -30,6 +31,18 @@ export default function Sidebar({ page, setPage }) {
           </button>
         ))}
       </nav>
+      <div className="mt-auto pt-6">
+        <button 
+          onClick={() => {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/';
+          }}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-900/20 w-full transition"
+        >
+          <LogOut size={18} />
+          <span>Log Out</span>
+        </button>
+      </div>
     </>
   )
 

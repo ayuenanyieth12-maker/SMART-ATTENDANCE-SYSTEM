@@ -7,20 +7,32 @@ export default function AdminLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [isRegistering, setIsRegistering] = useState(false)
   const navigate = useNavigate()
 
   const handleLogin = async () => {
     setError('')
     try {
-      // Firebase uses email/password. Defaulting to admin email from secrets if needed.
-      // Assuming user has created an admin account in Firebase.
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
       localStorage.setItem('adminToken', user.accessToken)
-      navigate('/')
+      navigate('/admin')
     } catch (err) {
       console.error(err)
       setError('Invalid email or password')
+    }
+  }
+
+  const handleRegister = async () => {
+    setError('')
+    try {
+      const { createUserWithEmailAndPassword } = await import('firebase/auth')
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      localStorage.setItem('adminToken', userCredential.user.accessToken)
+      navigate('/admin')
+    } catch (err) {
+      console.error(err)
+      setError('Failed to create account: ' + err.message)
     }
   }
 
@@ -32,7 +44,7 @@ export default function AdminLogin() {
           <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 text-xl font-bold">
             A
           </div>
-          <h1 className="text-2xl font-bold text-white">Admin Login</h1>
+          <h1 className="text-2xl font-bold text-white">{isRegistering ? 'Create Admin' : 'Admin Login'}</h1>
           <p className="text-gray-400 text-sm mt-1">Smart Attendance System</p>
         </div>
 
@@ -45,10 +57,10 @@ export default function AdminLogin() {
             <label className="text-gray-400 text-xs mb-1 block">Email</label>
             <input
               type="email"
-              value={email}
+               value={email}
               onChange={e => setEmail(e.target.value)}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
-              placeholder="danmclaston@gmail.com"
+              placeholder="admin@university.edu"
             />
           </div>
           <div>
@@ -57,16 +69,23 @@ export default function AdminLogin() {
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleLogin()}
+              onKeyDown={e => e.key === 'Enter' && (isRegistering ? handleRegister() : handleLogin())}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
               placeholder="••••••••"
             />
           </div>
-          <button
-            onClick={handleLogin}
+           <button
+            onClick={isRegistering ? handleRegister : handleLogin}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition"
           >
-            Sign In
+            {isRegistering ? 'Register Admin' : 'Sign In'}
+          </button>
+          
+          <button 
+            onClick={() => setIsRegistering(!isRegistering)}
+            className="w-full text-blue-400 text-xs hover:underline mt-2"
+          >
+            {isRegistering ? 'Already have an account? Sign In' : 'Need to create the first Admin account? Sign Up'}
           </button>
         </div>
 

@@ -196,7 +196,10 @@ export default function Portal() {
 
         {/* Sign Out */}
         <button
-          onClick={() => setStudent(null)}
+          onClick={() => {
+            setStudent(null);
+            window.location.href = '/';
+          }}
           className="mt-auto flex items-center gap-2 text-gray-400 hover:text-white text-sm transition px-2 py-2 rounded-lg hover:bg-gray-800"
         >
           <LogOut size={15} /> Sign Out

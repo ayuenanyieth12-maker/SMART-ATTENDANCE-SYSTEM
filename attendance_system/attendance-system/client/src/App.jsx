@@ -11,6 +11,7 @@ import Kiosk from './pages/Kiosk'
 import Portal from './pages/Portal'
 import Registration from './pages/Registration'
 import Reports from './pages/Reports'
+import ManageAdmins from './pages/ManageAdmins'
 
 export default function App() {
   const [page,            setPage]            = useState('overview')
@@ -20,7 +21,7 @@ export default function App() {
 
   useEffect(() => {
     if (!localStorage.getItem('adminToken')) navigate('/admin-login')
-  }, [])
+  }, [navigate])
 
   const renderPage = () => {
     switch (page) {
@@ -34,6 +35,7 @@ export default function App() {
       case 'portal':     return <Portal />
       case 'registration': return <Registration />
       case 'reports':    return <Reports />
+      case 'admins':     return <ManageAdmins />
       default:           return <Overview />
     }
   }
