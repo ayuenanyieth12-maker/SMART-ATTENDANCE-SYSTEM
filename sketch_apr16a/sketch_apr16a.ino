@@ -1,12 +1,3 @@
-#include <FB_Const.h>
-#include <FB_Error.h>
-#include <FB_Network.h>
-#include <FB_Utils.h>
-#include <Firebase.h>
-
-#include <FirebaseFS.h>
-
-
 #include <SPI.h>
 #include <MFRC522v2.h>
 #include <MFRC522DriverSPI.h>
@@ -14,9 +5,8 @@
 #include <WiFi.h>
 #include <Firebase_ESP_Client.h>
 
-// Provide the token generation process info.
+// Helpers
 #include <addons/TokenHelper.h>
-// Provide the RTDB payload printing info and other helper functions.
 #include <addons/RTDBHelper.h>
 
 #include "secrets.h"
@@ -24,40 +14,55 @@
 #define SS_PIN   5
 #define RST_PIN  22
 
-// ===== RFID Setup =====
+// RFID Setup
 MFRC522DriverPinSimple ss_pin(SS_PIN);
 MFRC522DriverSPI driver(ss_pin);
 MFRC522 rfid(driver);
 
-// ===== Firebase Setup =====
+// Firebase objects
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
 unsigned long lastScanTime = 0;
-const int cooldown = 3000;
+const unsigned long cooldown = 3000;
 String lastUID = "";
-
-// Database URL from secrets
-String databaseURL = "https://" + String(FIREBASE_PROJECT_ID) + "-default-rtdb.firebaseio.com";
 
 void setup() {
   Serial.begin(115200);
-  SPI.begin(18, 19, 23, SS_PIN);
+  SPI.begin(18, 19, 23, SS_PIN);   // SCK, MISO, MOSI, SS
 
-  // ===== Connect WiFi =====
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("Connecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+  // WiFi
+ Serial.println("Connecting to WiFi: " + String(WIFI_SSID));
+
+unsigned long wifiStart = millis();
+bool connected = false;
+
+WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+while (millis() - wifiStart < 20000) {   // 20 seconds timeout
+  if (WiFi.status() == WL_CONNECTED) {
+    connected = true;
+    break;
   }
-  Serial.println("\nWiFi connected!");
+  delay(500);
+  Serial.print(".");
+}
 
-  // ===== Firebase Config =====
+if (connected) {
+  Serial.println("\n✅ WiFi Connected!");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+} else {
+  Serial.println("\n❌ WiFi Connection FAILED!");
+  Serial.println("Check SSID, Password, and signal strength.");
+}
+
+  // Firebase Config
   config.api_key = FIREBASE_API_KEY;
-  config.database_url = databaseURL;
-  
+  config.database_url = "https://" + String(FIREBASE_PROJECT_ID) + "-default-rtdb.firebaseio.com";
+
+  // Authentication
   auth.user.email = USER_EMAIL;
   auth.user.password = USER_PASSWORD;
 
@@ -65,14 +70,15 @@ void setup() {
   Firebase.reconnectWiFi(true);
 
   rfid.PCD_Init();
-  Serial.println("=== RFID Attendance System Ready (RTDB Mode) ===");
+  Serial.println("=== RFID Attendance System Ready ===");
 }
 
 void loop() {
-  if (!rfid.PICC_IsNewCardPresent()) return;
-  if (!rfid.PICC_ReadCardSerial()) return;
+  if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
+    return;
+  }
 
-  // Build UID
+  // Get UID
   String uid = "";
   for (byte i = 0; i < rfid.uid.size; i++) {
     if (rfid.uid.uidByte[i] < 0x10) uid += "0";
@@ -81,7 +87,13 @@ void loop() {
   }
   uid.toUpperCase();
 
-  if (uid == lastUID && millis() - lastScanTime < cooldown) return;
+  // Cooldown to prevent duplicate scans
+  if (uid == lastUID && millis() - lastScanTime < cooldown) {
+    rfid.PICC_HaltA();
+    rfid.PCD_StopCrypto1();
+    return;
+  }
+
   lastUID = uid;
   lastScanTime = millis();
 
@@ -89,22 +101,33 @@ void loop() {
   Serial.println(uid);
 
   if (Firebase.ready()) {
-    // Record the scan in RTDB
     FirebaseJson json;
-    json.add("uid", uid);
-    json.add("timestamp", "2024-05-02 14:00:00"); // Placeholder for time
-    json.add("type", "IN");
-    json.add("class_id", "BSE314");
+    json.set("uid", uid);
+    json.set("timestamp", getISO8601Time());   // Real timestamp
+    json.set("type", "IN");
+    json.set("class_id", "BSE314");
+    json.set("device", "ESP32-RFID-01");
 
-    String path = "/scans/" + String(millis()); // Simple unique ID
-    
+    String path = "/scans/" + String(millis());   // Unique path
+
     if (Firebase.RTDB.setJSON(&fbdo, path.c_str(), &json)) {
-      Serial.println("Scan recorded in RTDB!");
+      Serial.println("✅ Scan recorded successfully!");
     } else {
-      Serial.println("Error recording scan: " + fbdo.errorReason());
+      Serial.println("❌ Firebase Error: " + fbdo.errorReason());
     }
+  } else {
+    Serial.println("Firebase not ready");
   }
 
   rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();
+}
+
+// Helper: Get current time as ISO string
+String getISO8601Time() {
+  time_t now;
+  time(&now);
+  char buf[25];
+  strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
+  return String(buf);
 }
